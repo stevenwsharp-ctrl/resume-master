@@ -2,12 +2,18 @@
 // than PDF, so this uses a plain single-column layout: standard fonts, real
 // bullet lists, no tables, text boxes, headers or footers.
 import type { Paragraph as DocParagraph, TextRun as DocRun } from 'docx'
-import type { ResumeContent } from '../types'
+import type { ResumeContent, ResumeFormat } from '../types'
+import { hoursLabel } from './format'
 
-export async function downloadDocx(r: ResumeContent, filename: string) {
+export async function downloadDocx(r: ResumeContent, filename: string, format: ResumeFormat = 'standard') {
   const { AlignmentType, BorderStyle, Document, Packer, Paragraph, TabStopType, TextRun } = await import('docx')
 
   const font = 'Calibri'
+  // OPM's federal format: 0.5in margins, 10pt body, 14pt name. Sizes are in half-points, margins in twips.
+  const federal = format === 'federal'
+  const size = federal ? 20 : 21
+  const margin = federal ? { top: 720, bottom: 720, left: 720, right: 720 } : { top: 1008, bottom: 1008, left: 1080, right: 1080 }
+  const rightEdge = 12240 - margin.left - margin.right
   const heading = (text: string) =>
     new Paragraph({
       spacing: { before: 200, after: 80 },
@@ -17,17 +23,17 @@ export async function downloadDocx(r: ResumeContent, filename: string) {
   const line = (runs: DocRun[], extra: Record<string, unknown> = {}) =>
     new Paragraph({ spacing: { after: 40 }, children: runs, ...extra })
   const bullet = (text: string) =>
-    new Paragraph({ bullet: { level: 0 }, spacing: { after: 30 }, children: [new TextRun({ text, size: 21, font })] })
-  const t = (text: string, opts: { bold?: boolean; italics?: boolean } = {}) => new TextRun({ text, size: 21, font, ...opts })
+    new Paragraph({ bullet: { level: 0 }, spacing: { after: 30 }, children: [new TextRun({ text, size, font })] })
+  const t = (text: string, opts: { bold?: boolean; italics?: boolean } = {}) => new TextRun({ text, size, font, ...opts })
   // Title on the left, dates on the right edge, using a tab stop rather than a table.
   const entryHead = (left: DocRun[], right: string) =>
-    line([...left, ...(right ? [new TextRun({ text: `\t${right}`, size: 21, font })] : [])], {
-      tabStops: [{ type: TabStopType.RIGHT, position: 10080 }],
+    line([...left, ...(right ? [new TextRun({ text: `\t${right}`, size, font })] : [])], {
+      tabStops: [{ type: TabStopType.RIGHT, position: rightEdge }],
     })
 
   const contact = [r.contact.email, r.contact.phone, r.contact.location, ...r.contact.links].filter(Boolean).join(' | ')
   const body: DocParagraph[] = [
-    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: r.name, bold: true, size: 36, font })] }),
+    new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: r.name, bold: true, size: federal ? 28 : 36, font })] }),
   ]
   if (r.headline) body.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [t(r.headline)] }))
   if (contact) body.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 120 }, children: [t(contact)] }))
@@ -40,7 +46,8 @@ export async function downloadDocx(r: ResumeContent, filename: string) {
   if (r.experience.length) {
     body.push(heading('Work Experience'))
     for (const e of r.experience) {
-      body.push(entryHead([t(e.title, { bold: true }), t([e.company, e.location].filter(Boolean).map((x) => `, ${x}`).join(''))], [e.start, e.end].filter(Boolean).join(' - ')))
+      const dates = [e.start, e.end].filter(Boolean).join(' - ') + (e.hours_per_week ? `, ${hoursLabel(e.hours_per_week)}` : '')
+      body.push(entryHead([t(e.title, { bold: true }), t([e.series_grade, e.company, e.location].filter(Boolean).map((x) => `, ${x}`).join(''))], dates))
       for (const b of e.bullets) body.push(bullet(b))
     }
   }
@@ -63,7 +70,7 @@ export async function downloadDocx(r: ResumeContent, filename: string) {
   const doc = new Document({
     creator: r.name,
     title: `${r.name} Resume`,
-    sections: [{ properties: { page: { margin: { top: 1008, bottom: 1008, left: 1080, right: 1080 } } }, children: body }],
+    sections: [{ properties: { page: { margin } }, children: body }],
   })
   const blob = await Packer.toBlob(doc)
   const url = URL.createObjectURL(blob)

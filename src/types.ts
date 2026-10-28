@@ -5,6 +5,9 @@ export interface ProfileExperience {
   start: string
   end: string
   description: string
+  // Needed for federal (USAJOBS) resumes
+  hours_per_week?: string
+  series_grade?: string
 }
 
 export interface ProfileEducation {
@@ -74,6 +77,8 @@ export interface ResumeContent {
     location: string
     start: string
     end: string
+    hours_per_week?: string
+    series_grade?: string
     bullets: string[]
   }[]
   education: { degree: string; school: string; year: string; details: string }[]
@@ -99,6 +104,16 @@ export interface ResumeNotes {
   }
 }
 
+// "federal" follows OPM's two-page USAJOBS format
+export type ResumeFormat = 'standard' | 'federal'
+
+export interface ResumeVersion {
+  content: ResumeContent
+  format?: ResumeFormat
+  saved_at: string
+  reason: string
+}
+
 export interface ResumeRow {
   id: string
   user_id: string
@@ -107,7 +122,9 @@ export interface ResumeRow {
   company: string | null
   job_url: string | null
   job_description: string | null
+  format: ResumeFormat
   content: ResumeContent
+  history: ResumeVersion[]
   notes: ResumeNotes | null
   created_at: string
   updated_at: string

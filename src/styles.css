@@ -171,9 +171,22 @@ button.link.small { font-size: 0.85rem; }
 .item-controls button { padding: 0.15rem 0.55rem; font-size: 0.75rem; }
 
 /* The two "start here" panels get the red title bar */
-.tailor > h2:first-child, .import > h2:first-child { background: var(--oxblood); }
+.tailor > h2:first-child, .import > h2:first-child, .revise > h2:first-child { background: var(--oxblood); }
 .tailor form { display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; }
 .tailor .row, .tailor label { width: 100%; }
+
+label.check {
+  flex-direction: row; align-items: flex-start; gap: 0.5rem; margin: 0;
+  font-family: var(--serif); font-size: 0.9rem; text-transform: none; letter-spacing: normal; color: var(--ink);
+}
+label.check input { width: auto; margin-top: 0.3rem; box-shadow: none; }
+
+/* Rubber stamp for federal resumes */
+.stamp {
+  align-self: flex-start; margin-top: 0.15rem;
+  font-family: var(--type); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--navy); border: 2px solid var(--navy); padding: 0 0.35rem; transform: rotate(-1.5deg);
+}
 
 /* Lists read like an index card catalogue */
 .resume-list { list-style: none; padding: 0; margin: 0; }
@@ -210,6 +223,18 @@ button.link.small { font-size: 0.85rem; }
 .ats-checks li.bad::before { content: '\2717'; color: var(--oxblood); }
 .ats-checks li .muted { display: block; text-indent: 0; }
 aside ul { padding-left: 1.1rem; margin: 0.3rem 0; }
+.page-meter { border-top: 1px dotted var(--hair); padding-top: 0.5rem; margin-bottom: 0; }
+.page-meter strong { font-family: var(--type); text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.05em; }
+.page-meter.over { color: var(--oxblood); background: #fbeee6; border: 1px solid var(--oxblood); padding: 0.4rem 0.5rem; }
+
+/* Ask for changes */
+.revise form { display: flex; flex-direction: column; }
+.revise label { margin-bottom: 0.6rem; }
+.revise-actions { flex-wrap: wrap; }
+.revise .suggestions { margin: 0.8rem 0 0; border-top: 1px dotted var(--hair); padding-top: 0.6rem; }
+.revise .done { background: var(--highlight); border: 1px dashed #b29d47; padding: 0.5rem 0.7rem; margin: 0.8rem 0 0; }
+.revise .done strong { font-family: var(--type); text-transform: uppercase; font-size: 0.8rem; color: var(--success); }
+.revise .error { margin: 0.8rem 0 0; }
 aside li { margin-bottom: 0.25rem; }
 
 /* The resume itself: a letter-size page look on screen, clean on paper. */
@@ -231,6 +256,17 @@ aside li { margin-bottom: 0.25rem; }
 .resume .dates { white-space: nowrap; color: #444; font-size: 9.5pt; }
 .resume .muted { color: #555; }
 .resume .skill-line { margin: 0.1rem 0; }
+
+/* Federal (OPM two-page) format: sans-serif, 10pt body, 14pt name */
+.resume.federal { font-family: 'Lato', Calibri, Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.35; }
+.resume.federal h1 { font-size: 14pt; letter-spacing: 0; }
+.resume.federal .headline { font-size: 10.5pt; }
+.resume.federal h2 { font-size: 10.5pt; margin-top: 0.7rem; }
+.resume.federal .contact, .resume.federal .dates { font-size: 9.5pt; }
+
+/* Offscreen copy used to estimate the printed page count */
+.page-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
+.page-measure .resume { border: none; box-shadow: none; padding: 0; }
 
 .editor h3 { margin-top: 1.4rem; font-family: var(--type); text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.85rem; border-bottom: 1px solid var(--hair); padding-bottom: 0.3rem; }
 

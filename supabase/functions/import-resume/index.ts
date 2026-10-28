@@ -32,6 +32,8 @@ const ProfileSchema = z.object({
       start: z.string(),
       end: z.string(),
       description: z.string(),
+      hours_per_week: z.string(),
+      series_grade: z.string(),
     }),
   ),
   education: z.array(
@@ -57,7 +59,7 @@ Field guide:
 - links: one URL per line (LinkedIn, GitHub, portfolio...).
 - background: the resume's summary or objective, as written. Empty if there is none.
 - skills: every skill, tool, technology and language listed, comma separated.
-- experience: one entry per role, most recent first. description holds that role's bullets, one per line starting with "- ".
+- experience: one entry per role, most recent first. description holds that role's bullets, one per line starting with "- ". hours_per_week and series_grade (like "GS-0343-12") only when the resume states them, as federal resumes do.
 - education, projects: one entry per item.
 - certifications: one per line.
 - extra: awards, volunteering, languages, publications, clearances and anything else that doesn't fit above.

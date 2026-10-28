@@ -1,29 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { callFunction } from '../lib/functions'
 import type { ResumeRow } from '../types'
 
-type ListRow = Pick<ResumeRow, 'id' | 'kind' | 'title' | 'company' | 'job_url' | 'created_at'>
+type ListRow = Pick<ResumeRow, 'id' | 'kind' | 'format' | 'title' | 'company' | 'job_url' | 'created_at'>
 
-async function generateResume(body: { job_url?: string; job_text?: string }) {
-  const { data, error } = await supabase.functions.invoke('tailor', { body })
-  if (error) {
-    let message = error.message
-    let needsText = false
-    if (error instanceof FunctionsHttpError) {
-      try {
-        const payload = await error.context.json()
-        message = payload.error ?? message
-        needsText = Boolean(payload.needs_text)
-      } catch {
-        // keep the generic message
-      }
-    }
-    return { error: message, needsText }
-  }
-  return { resume: data.resume as ResumeRow }
+async function generateResume(body: { job_url?: string; job_text?: string; federal?: boolean }) {
+  const { data, error, needsText } = await callFunction<{ resume: ResumeRow }>('tailor', body)
+  return error ? { error, needsText } : { resume: data!.resume }
 }
 
 export default function DashboardPage() {
@@ -34,6 +20,7 @@ export default function DashboardPage() {
   const [jobUrl, setJobUrl] = useState('')
   const [jobText, setJobText] = useState('')
   const [showPaste, setShowPaste] = useState(false)
+  const [federal, setFederal] = useState(false)
   const [busy, setBusy] = useState<null | 'master' | 'tailor'>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -41,7 +28,7 @@ export default function DashboardPage() {
     Promise.all([
       supabase
         .from('resumes')
-        .select('id, kind, title, company, job_url, created_at')
+        .select('id, kind, format, title, company, job_url, created_at')
         .order('created_at', { ascending: false }),
       supabase.from('profiles').select('user_id').maybeSingle(),
     ]).then(([resumes, profile]) => {
@@ -57,7 +44,7 @@ export default function DashboardPage() {
     setError(null)
     setBusy(kind)
     const result = await generateResume(
-      kind === 'master' ? {} : { job_url: jobUrl.trim() || undefined, job_text: jobText.trim() || undefined },
+      kind === 'master' ? {} : { job_url: jobUrl.trim() || undefined, job_text: jobText.trim() || undefined, federal },
     )
     setBusy(null)
     if (result.error) {
@@ -113,6 +100,10 @@ export default function DashboardPage() {
               Or paste the job description instead
             </button>
           )}
+          <label className="check">
+            <input type="checkbox" checked={federal} onChange={(e) => setFederal(e.target.checked)} />
+            Federal job (USAJOBS): follow OPM's two-page resume rules. USAJOBS links are detected on their own.
+          </label>
         </form>
       </section>
 
@@ -143,6 +134,7 @@ function ResumeList({ rows, onRemove, empty }: { rows: ListRow[]; onRemove: (id:
         <li key={r.id}>
           <Link to={`/resume/${r.id}`}>
             <strong>{r.title}</strong>
+            {r.format === 'federal' && <span className="stamp">Federal · 2 pp.</span>}
             <span className="muted small">{new Date(r.created_at).toLocaleDateString()}</span>
           </Link>
           {r.job_url && (

@@ -9,7 +9,7 @@ import type { ImportedProfile } from '../lib/resumeFile'
 type ListKey = 'experience' | 'education' | 'projects'
 
 const blankItem: { experience: ProfileExperience; education: ProfileEducation; projects: ProfileProject } = {
-  experience: { title: '', company: '', location: '', start: '', end: '', description: '' },
+  experience: { title: '', company: '', location: '', start: '', end: '', description: '', hours_per_week: '', series_grade: '' },
   education: { degree: '', school: '', year: '', details: '' },
   projects: { name: '', description: '' },
 }
@@ -180,6 +180,8 @@ export default function ProfilePage({ userId }: { userId: string }) {
                 <Field label="Start" placeholder="Mar 2021" value={job.start} onChange={(v) => setItem('experience', i, 'start', v)} />
                 <Field label="End" placeholder="Present" value={job.end} onChange={(v) => setItem('experience', i, 'end', v)} />
               </div>
+              <Field label="Hours per week (needed for federal jobs)" placeholder="40" value={job.hours_per_week ?? ''} onChange={(v) => setItem('experience', i, 'hours_per_week', v)} />
+              <Field label="Series and grade, if a federal job" placeholder="GS-0343-12" value={job.series_grade ?? ''} onChange={(v) => setItem('experience', i, 'series_grade', v)} />
             </div>
             <Area
               label="What you did and achieved (rough notes are fine, include numbers where you can)"
@@ -203,7 +205,7 @@ export default function ProfilePage({ userId }: { userId: string }) {
               <Field label="Degree / program" value={ed.degree} onChange={(v) => setItem('education', i, 'degree', v)} />
               <Field label="School" value={ed.school} onChange={(v) => setItem('education', i, 'school', v)} />
               <Field label="Year" value={ed.year} onChange={(v) => setItem('education', i, 'year', v)} />
-              <Field label="Details (honors, GPA, coursework)" value={ed.details} onChange={(v) => setItem('education', i, 'details', v)} />
+              <Field label="Details (GPA, honors, coursework)" value={ed.details} onChange={(v) => setItem('education', i, 'details', v)} />
             </div>
           </div>
         ))}

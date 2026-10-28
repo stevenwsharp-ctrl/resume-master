@@ -23,3 +23,4 @@ jobs:
       - run: supabase secrets set ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
       - run: supabase functions deploy tailor
       - run: supabase functions deploy import-resume
+      - run: supabase functions deploy revise

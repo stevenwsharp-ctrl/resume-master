@@ -7,3 +7,6 @@ verify_jwt = false
 
 [functions.import-resume]
 verify_jwt = false
+
+[functions.revise]
+verify_jwt = false

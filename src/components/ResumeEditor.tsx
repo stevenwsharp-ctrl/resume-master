@@ -34,6 +34,8 @@ export default function ResumeEditor({ value: r, onChange }: { value: ResumeCont
                 <label>Start<input value={job.start} onChange={(e) => setJob({ start: e.target.value })} /></label>
                 <label>End<input value={job.end} onChange={(e) => setJob({ end: e.target.value })} /></label>
               </div>
+              <label>Series and grade (federal)<input value={job.series_grade ?? ''} placeholder="GS-0343-12" onChange={(e) => setJob({ series_grade: e.target.value })} /></label>
+              <label>Hours per week<input value={job.hours_per_week ?? ''} placeholder="40" onChange={(e) => setJob({ hours_per_week: e.target.value })} /></label>
             </div>
             <label>
               Bullets (one per line)

@@ -5,42 +5,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.134.0";
 import { zodOutputFormat } from "npm:@anthropic-ai/sdk@0.134.0/helpers/zod";
 import { z } from "npm:zod@4.6.6";
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
-
-const MODEL = "claude-opus-5-5";
-
-const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-
-const ResumeSchema = z.object({
-  name: z.string(),
-  headline: z.string(),
-  contact: z.object({
-    email: z.string(),
-    phone: z.string(),
-    location: z.string(),
-    links: z.array(z.string()),
-  }),
-  summary: z.string(),
-  skills: z.array(z.object({ category: z.string(), items: z.array(z.string()) })),
-  experience: z.array(
-    z.object({
-      title: z.string(),
-      company: z.string(),
-      location: z.string(),
-      start: z.string(),
-      end: z.string(),
-      bullets: z.array(z.string()),
-    }),
-  ),
-  education: z.array(
-    z.object({ degree: z.string(), school: z.string(), year: z.string(), details: z.string() }),
-  ),
-  certifications: z.array(z.string()),
-  projects: z.array(z.object({ name: z.string(), description: z.string() })),
-});
+import { cors, FEDERAL_RULES, isFederalPosting, json, MODEL, ResumeSchema } from "../_shared/resume.ts";
 
 const OutputSchema = z.object({
   resume: ResumeSchema,
@@ -68,7 +33,7 @@ Truthfulness (never break these):
 - Use only facts present in the candidate's profile and their previous resume (when one is given). Never invent employers, titles, dates, degrees, certifications, tools, skills, or numbers. You may rephrase, reorder, merge, and emphasize.
 - A keyword goes in the resume only when the candidate's real experience supports it. Requirements they can't back up go in "gaps"; in-demand skills they don't show go in ats.trending. Never stuff keywords into the resume, hide them, or list a skill just because the posting wants it.
 - The previous resume is reference material: mine it for skills, tools, accomplishments and numbers the profile doesn't mention, and use them where relevant. Where the two disagree, the profile is newer and wins. Don't copy the old resume's wording when you can write it better.
-- Leave a field as an empty string or empty list when the profile has nothing for it.
+- Leave a field as an empty string or empty list when the profile has nothing for it. Fill hours_per_week and series_grade only for a federal resume, and only from the candidate's facts.
 
 Keywords and current terminology:
 - When a job posting is given, pull out the hard skills, tools, methods, certifications and role titles an ATS or recruiter would search for, and use the posting's exact wording for the ones the candidate's experience supports (e.g. the posting says "stakeholder management" and the profile says "worked with business owners": write "stakeholder management").
@@ -126,13 +91,6 @@ async function fetchJobPosting(url: string): Promise<string> {
   return text.slice(0, 60000);
 }
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
@@ -146,7 +104,7 @@ Deno.serve(async (req) => {
   const user = userData?.user;
   if (!user) return json({ error: "Please sign in" }, 401);
 
-  let body: { job_url?: string; job_text?: string };
+  let body: { job_url?: string; job_text?: string; federal?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -180,6 +138,7 @@ Deno.serve(async (req) => {
     }
   }
   const tailored = Boolean(jobText);
+  const format = body.federal || (tailored && isFederalPosting(jobUrl, jobText)) ? "federal" : "standard";
 
   const { reference_resume: reference, ...profile } = profileRow.data as Record<string, unknown> & {
     reference_resume?: { filename?: string; text?: string };
@@ -193,6 +152,7 @@ Deno.serve(async (req) => {
     tailored
       ? `<job_posting${jobUrl ? ` url="${jobUrl}"` : ""}>\n${jobText}\n</job_posting>\n\nWrite the best possible resume for this candidate, tailored to this job posting. The posting text may include unrelated page content; ignore it.`
       : "Write the best possible general-purpose master resume for this candidate, aimed at the kind of role their headline and recent experience point to.",
+    format === "federal" ? `\n${FEDERAL_RULES}` : "",
   ].join("\n");
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! });
@@ -219,7 +179,7 @@ Deno.serve(async (req) => {
 
   const title = tailored
     ? [parsed.job_title, parsed.company].filter(Boolean).join(" at ") || "Tailored resume"
-    : "Master resume";
+    : format === "federal" ? "Federal master resume" : "Master resume";
 
   const { data: saved, error: saveErr } = await supabase
     .from("resumes")
@@ -230,6 +190,7 @@ Deno.serve(async (req) => {
       company: parsed.company || null,
       job_url: jobUrl,
       job_description: tailored ? jobText : null,
+      format,
       content: parsed.resume,
       notes: { match_keywords: parsed.match_keywords, gaps: parsed.gaps, tips: parsed.tips, ats: parsed.ats },
     })
