@@ -54,9 +54,10 @@ const OutputSchema = z.object({
 const SYSTEM = `You are an expert resume writer and recruiter. You turn a candidate's raw background into a concise, achievement-focused, ATS-friendly resume.
 
 Rules:
-- Use only facts present in the candidate's profile. Never invent employers, titles, dates, degrees, certifications, or numbers. You may rephrase, reorder, merge, and emphasize.
+- Use only facts present in the candidate's profile and their previous resume (when one is given). Never invent employers, titles, dates, degrees, certifications, or numbers. You may rephrase, reorder, merge, and emphasize.
 - Write bullets as strong action verb + what was done + measurable result when the profile supports one.
 - Keep it to what fits on one or two pages: the most relevant 3-6 bullets per role, recent roles first.
+- The previous resume is reference material: mine it for skills, tools, accomplishments and numbers the profile doesn't mention, and use them where relevant. Where the two disagree, the profile is newer and wins. Don't copy the old resume's wording when you can write it better.
 - Leave a field as an empty string or empty list when the profile has nothing for it.
 - When a job posting is given, mirror its important keywords and priorities wherever the candidate's real experience supports them, lead with the most relevant experience and skills, and write the headline and summary for that role.
 - In "gaps", list requirements from the posting the profile does not show evidence for. In "tips", give short, specific suggestions for the candidate (for example, details worth adding to their profile). With no posting, set job_title and company to empty strings and use "gaps" for weak spots in the profile.`;
@@ -151,10 +152,15 @@ Deno.serve(async (req) => {
   }
   const tailored = Boolean(jobText);
 
+  const { reference_resume: reference, ...profile } = profileRow.data as Record<string, unknown> & {
+    reference_resume?: { filename?: string; text?: string };
+  };
+
   const prompt = [
     "<candidate_profile>",
-    JSON.stringify(profileRow.data, null, 2),
+    JSON.stringify(profile, null, 2),
     "</candidate_profile>",
+    reference?.text ? `<previous_resume>\n${reference.text}\n</previous_resume>` : "",
     tailored
       ? `<job_posting${jobUrl ? ` url="${jobUrl}"` : ""}>\n${jobText}\n</job_posting>\n\nWrite the best possible resume for this candidate, tailored to this job posting. The posting text may include unrelated page content; ignore it.`
       : "Write the best possible general-purpose master resume for this candidate.",

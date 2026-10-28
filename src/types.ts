@@ -35,6 +35,15 @@ export interface Profile {
   certifications: string
   projects: ProfileProject[]
   extra: string
+  // Text of a resume the user uploaded. The AI uses it as extra source
+  // material (skills, wins, numbers) on top of the fields above.
+  reference_resume?: ReferenceResume
+}
+
+export interface ReferenceResume {
+  filename: string
+  text: string
+  uploaded_at: string
 }
 
 export const emptyProfile: Profile = {
