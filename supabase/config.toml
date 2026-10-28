@@ -1,0 +1,4 @@
+project_id = "resume-master"
+
+[functions.tailor]
+verify_jwt = true
