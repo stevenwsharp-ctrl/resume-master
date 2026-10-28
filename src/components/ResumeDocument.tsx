@@ -12,14 +12,26 @@ export default function ResumeDocument({ resume: r }: { resume: ResumeContent })
 
       {r.summary && (
         <section>
-          <h2>Summary</h2>
+          <h2>Professional Summary</h2>
           <p>{r.summary}</p>
+        </section>
+      )}
+
+      {r.skills.length > 0 && (
+        <section>
+          <h2>Skills</h2>
+          {r.skills.map((s, i) => (
+            <p key={i} className="skill-line">
+              {s.category && <strong>{s.category}: </strong>}
+              {s.items.join(', ')}
+            </p>
+          ))}
         </section>
       )}
 
       {r.experience.length > 0 && (
         <section>
-          <h2>Experience</h2>
+          <h2>Work Experience</h2>
           {r.experience.map((e, i) => (
             <div className="entry" key={i}>
               <div className="entry-head">
@@ -32,18 +44,6 @@ export default function ResumeDocument({ resume: r }: { resume: ResumeContent })
               </div>
               <ul>{e.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
             </div>
-          ))}
-        </section>
-      )}
-
-      {r.skills.length > 0 && (
-        <section>
-          <h2>Skills</h2>
-          {r.skills.map((s, i) => (
-            <p key={i} className="skill-line">
-              {s.category && <strong>{s.category}: </strong>}
-              {s.items.join(', ')}
-            </p>
           ))}
         </section>
       )}

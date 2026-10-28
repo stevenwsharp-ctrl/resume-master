@@ -199,6 +199,16 @@ button.link.small { font-size: 0.85rem; }
 .resume-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1.5rem; align-items: start; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 .chip { font-family: var(--type); font-size: 0.78rem; background: var(--highlight); border: 1px solid #c9b45a; padding: 0.05rem 0.4rem; }
+.chip.missing { background: transparent; border-style: dashed; border-color: var(--muted); color: var(--muted); }
+.chip.missing.required { border-color: var(--oxblood); color: var(--oxblood); }
+.ats-score { margin: 0.2rem 0 0.4rem; }
+.ats-score strong { font-size: 2rem; font-weight: 400; font-style: italic; }
+.ats-checks { list-style: none; padding-left: 0 !important; }
+.ats-checks li { padding-left: 1.3rem; text-indent: -1.3rem; }
+.ats-checks li::before { font-family: var(--type); font-weight: 700; display: inline-block; width: 1.3rem; text-indent: 0; }
+.ats-checks li.ok::before { content: '\2713'; color: #2f6b34; }
+.ats-checks li.bad::before { content: '\2717'; color: var(--oxblood); }
+.ats-checks li .muted { display: block; text-indent: 0; }
 aside ul { padding-left: 1.1rem; margin: 0.3rem 0; }
 aside li { margin-bottom: 0.25rem; }
 

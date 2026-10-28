@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import type { ResumeContent, ResumeRow } from '../types'
 import ResumeDocument from '../components/ResumeDocument'
 import ResumeEditor from '../components/ResumeEditor'
+import AtsPanel from '../components/AtsPanel'
+import { downloadDocx } from '../lib/resumeDocx'
 
 export default function ResumePage() {
   const { id } = useParams()
@@ -67,6 +69,7 @@ export default function ResumePage() {
             <>
               <button onClick={() => setDraft(structuredClone(row.content))}>Edit</button>
               <button onClick={copyText}>Copy text</button>
+              <button onClick={() => downloadDocx(row.content, fileName(row)).catch((e) => setError(String(e)))}>Download Word</button>
               <button className="primary" onClick={() => window.print()}>Download PDF</button>
             </>
           )}
@@ -87,9 +90,10 @@ export default function ResumePage() {
             )}
             <p className="muted small">Created {new Date(row.created_at).toLocaleString()}</p>
           </div>
+          <AtsPanel resume={draft ?? row.content} notes={row.notes} />
           {row.notes && (
             <>
-              {row.notes.match_keywords.length > 0 && (
+              {!row.notes.ats && row.notes.match_keywords.length > 0 && (
                 <div className="card">
                   <h3>Keywords matched</h3>
                   <div className="chips">
@@ -118,16 +122,21 @@ export default function ResumePage() {
   )
 }
 
+function fileName(row: ResumeRow): string {
+  const base = [row.content.name, 'Resume', row.company].filter(Boolean).join(' ')
+  return `${base.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'Resume'}.docx`
+}
+
 function toPlainText(r: ResumeContent): string {
   const lines: string[] = [r.name, r.headline]
   lines.push([r.contact.email, r.contact.phone, r.contact.location, ...r.contact.links].filter(Boolean).join(' | '))
-  if (r.summary) lines.push('', 'SUMMARY', r.summary)
+  if (r.summary) lines.push('', 'PROFESSIONAL SUMMARY', r.summary)
   if (r.skills.length) {
     lines.push('', 'SKILLS')
-    for (const s of r.skills) lines.push(`${s.category}: ${s.items.join(', ')}`)
+    for (const s of r.skills) lines.push(s.category ? `${s.category}: ${s.items.join(', ')}` : s.items.join(', '))
   }
   if (r.experience.length) {
-    lines.push('', 'EXPERIENCE')
+    lines.push('', 'WORK EXPERIENCE')
     for (const e of r.experience) {
       lines.push(`${e.title}, ${e.company}${e.location ? `, ${e.location}` : ''} (${e.start} - ${e.end})`)
       for (const b of e.bullets) lines.push(`- ${b}`)

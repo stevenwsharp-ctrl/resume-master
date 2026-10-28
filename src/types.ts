@@ -81,10 +81,22 @@ export interface ResumeContent {
   projects: { name: string; description: string }[]
 }
 
+export interface AtsKeyword {
+  term: string
+  importance: 'required' | 'preferred' | 'bonus'
+  used: boolean
+}
+
 export interface ResumeNotes {
   match_keywords: string[]
   gaps: string[]
   tips: string[]
+  // Missing on resumes made before the ATS check existed.
+  ats?: {
+    keywords: AtsKeyword[]
+    modernized: { from: string; to: string }[]
+    trending: string[]
+  }
 }
 
 export interface ResumeRow {
