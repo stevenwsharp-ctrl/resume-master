@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { ResumeContent, ResumeRow } from '../types'
+import type { ResumeContent, ResumeRow, ResumeVersion } from '../types'
 import ResumeDocument from '../components/ResumeDocument'
 import ResumeEditor from '../components/ResumeEditor'
 import AtsPanel from '../components/AtsPanel'
 import { downloadDocx } from '../lib/resumeDocx'
+import ResumeRevise from '../components/ResumeRevise'
+import { usePageCount } from '../lib/pageCount'
+import { hoursLabel } from '../lib/format'
+
+const MAX_HISTORY = 15
 
 export default function ResumePage() {
   const { id } = useParams()
@@ -13,6 +18,7 @@ export default function ResumePage() {
   const [draft, setDraft] = useState<ResumeContent | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
+  const pages = usePageCount(row?.content ?? null, row?.format ?? 'standard')
 
   useEffect(() => {
     supabase
@@ -28,15 +34,31 @@ export default function ResumePage() {
 
   async function saveEdits() {
     if (!row || !draft) return
-    const { error } = await supabase
-      .from('resumes')
-      .update({ content: draft, updated_at: new Date().toISOString() })
-      .eq('id', row.id)
+    const history = [...(row.history ?? []), versionOf(row, 'Before your edits')].slice(-MAX_HISTORY)
+    const patch = { content: draft, history, updated_at: new Date().toISOString() }
+    const { error } = await supabase.from('resumes').update(patch).eq('id', row.id)
     if (error) setError(error.message)
     else {
-      setRow({ ...row, content: draft })
+      setRow({ ...row, ...patch })
       setDraft(null)
       flash('Saved')
+    }
+  }
+
+  async function undo() {
+    if (!row || !row.history?.length) return
+    const previous = row.history[row.history.length - 1]
+    const patch = {
+      content: previous.content,
+      format: previous.format ?? row.format,
+      history: row.history.slice(0, -1),
+      updated_at: new Date().toISOString(),
+    }
+    const { error } = await supabase.from('resumes').update(patch).eq('id', row.id)
+    if (error) setError(error.message)
+    else {
+      setRow({ ...row, ...patch })
+      flash('Went back to the previous version')
     }
   }
 
@@ -67,9 +89,14 @@ export default function ResumePage() {
             </>
           ) : (
             <>
+              {row.history?.length > 0 && (
+                <button onClick={undo} title={row.history[row.history.length - 1].reason}>
+                  ↶ Undo
+                </button>
+              )}
               <button onClick={() => setDraft(structuredClone(row.content))}>Edit</button>
               <button onClick={copyText}>Copy text</button>
-              <button onClick={() => downloadDocx(row.content, fileName(row)).catch((e) => setError(String(e)))}>Download Word</button>
+              <button onClick={() => downloadDocx(row.content, fileName(row), row.format).catch((e) => setError(String(e)))}>Download Word</button>
               <button className="primary" onClick={() => window.print()}>Download PDF</button>
             </>
           )}
@@ -78,7 +105,8 @@ export default function ResumePage() {
 
       <div className="resume-layout">
         <div>
-          {draft ? <ResumeEditor value={draft} onChange={setDraft} /> : <ResumeDocument resume={row.content} />}
+          {!draft && <ResumeRevise row={row} pages={pages} onRevised={setRow} />}
+          {draft ? <ResumeEditor value={draft} onChange={setDraft} /> : <ResumeDocument resume={row.content} format={row.format} />}
         </div>
         <aside className="no-print">
           <div className="card">
@@ -89,6 +117,7 @@ export default function ResumePage() {
               </p>
             )}
             <p className="muted small">Created {new Date(row.created_at).toLocaleString()}</p>
+            <PageMeter pages={pages} federal={row.format === 'federal'} />
           </div>
           <AtsPanel resume={draft ?? row.content} notes={row.notes} />
           {row.notes && (
@@ -127,6 +156,21 @@ function fileName(row: ResumeRow): string {
   return `${base.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') || 'Resume'}.docx`
 }
 
+function versionOf(row: ResumeRow, reason: string): ResumeVersion {
+  return { content: row.content, format: row.format, saved_at: row.updated_at, reason }
+}
+
+function PageMeter({ pages, federal }: { pages: number | null; federal: boolean }) {
+  if (pages === null) return null
+  const over = federal && pages > 2
+  return (
+    <p className={`small page-meter${over ? ' over' : ''}`}>
+      <strong>{federal ? 'Federal format' : 'Length'}:</strong> about {pages.toFixed(1)} printed {pages > 1.05 ? 'pages' : 'page'}
+      {federal && (over ? '. Over the two-page limit: USAJOBS will reject it.' : '. Within the two-page limit.')}
+    </p>
+  )
+}
+
 function toPlainText(r: ResumeContent): string {
   const lines: string[] = [r.name, r.headline]
   lines.push([r.contact.email, r.contact.phone, r.contact.location, ...r.contact.links].filter(Boolean).join(' | '))
@@ -138,7 +182,8 @@ function toPlainText(r: ResumeContent): string {
   if (r.experience.length) {
     lines.push('', 'WORK EXPERIENCE')
     for (const e of r.experience) {
-      lines.push(`${e.title}, ${e.company}${e.location ? `, ${e.location}` : ''} (${e.start} - ${e.end})`)
+      const hours = e.hours_per_week ? `, ${hoursLabel(e.hours_per_week)}` : ''
+      lines.push(`${e.title}${e.series_grade ? `, ${e.series_grade}` : ''}, ${e.company}${e.location ? `, ${e.location}` : ''} (${e.start} - ${e.end}${hours})`)
       for (const b of e.bullets) lines.push(`- ${b}`)
       lines.push('')
     }

@@ -1,9 +1,10 @@
-import type { ResumeContent } from '../types'
+import type { ResumeContent, ResumeFormat } from '../types'
+import { hoursLabel } from '../lib/format'
 
-export default function ResumeDocument({ resume: r }: { resume: ResumeContent }) {
+export default function ResumeDocument({ resume: r, format = 'standard' }: { resume: ResumeContent; format?: ResumeFormat }) {
   const contact = [r.contact.email, r.contact.phone, r.contact.location, ...r.contact.links].filter(Boolean)
   return (
-    <article className="resume">
+    <article className={`resume ${format}`}>
       <header>
         <h1>{r.name}</h1>
         {r.headline && <p className="headline">{r.headline}</p>}
@@ -37,10 +38,14 @@ export default function ResumeDocument({ resume: r }: { resume: ResumeContent })
               <div className="entry-head">
                 <div>
                   <strong>{e.title}</strong>
+                  {e.series_grade && <span>, {e.series_grade}</span>}
                   {e.company && <span> · {e.company}</span>}
                   {e.location && <span className="muted"> · {e.location}</span>}
                 </div>
-                <span className="dates">{[e.start, e.end].filter(Boolean).join(' – ')}</span>
+                <span className="dates">
+                  {[e.start, e.end].filter(Boolean).join(' – ')}
+                  {e.hours_per_week && <> · {hoursLabel(e.hours_per_week)}</>}
+                </span>
               </div>
               <ul>{e.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
             </div>
