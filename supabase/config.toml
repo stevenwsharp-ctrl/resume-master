@@ -4,3 +4,6 @@ project_id = "resume-master"
 # The function checks the signed-in user itself (auth.getUser), which also
 # works with Supabase's newer asymmetric JWT signing keys.
 verify_jwt = false
+
+[functions.import-resume]
+verify_jwt = false

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { emptyProfile } from '../types'
-import type { Profile, ProfileEducation, ProfileExperience, ProfileProject } from '../types'
+import type { Profile, ProfileEducation, ProfileExperience, ProfileProject, ReferenceResume } from '../types'
+import ResumeImport from '../components/ResumeImport'
+import { mergeImported } from '../lib/resumeFile'
+import type { ImportedProfile } from '../lib/resumeFile'
 
 type ListKey = 'experience' | 'education' | 'projects'
 
@@ -59,19 +62,34 @@ export default function ProfilePage({ userId }: { userId: string }) {
     set(key, list as never)
   }
 
-  async function save() {
+  async function save(data: Profile = profile, savedMessage = 'Saved') {
     setError(null)
     setStatus('Saving…')
     const { error } = await supabase
       .from('profiles')
-      .upsert({ user_id: userId, data: profile, updated_at: new Date().toISOString() })
+      .upsert({ user_id: userId, data, updated_at: new Date().toISOString() })
     if (error) {
       setError(error.message)
       setStatus(null)
     } else {
-      setStatus('Saved')
+      setStatus(savedMessage)
       setDirty(false)
     }
+  }
+
+  // Imports are saved right away so the uploaded resume is kept even if the
+  // user leaves without pressing Save.
+  function importResume(imported: ImportedProfile, reference: ReferenceResume) {
+    const next = mergeImported(profile, imported, reference)
+    setProfile(next)
+    save(next, `Filled in from ${reference.filename} and saved. Look it over below.`)
+  }
+
+  function removeReference() {
+    const next = { ...profile }
+    delete next.reference_resume
+    setProfile(next)
+    save(next, 'Old resume removed')
   }
 
   async function changePassword() {
@@ -97,12 +115,14 @@ export default function ProfilePage({ userId }: { userId: string }) {
         </div>
         <div className="save-bar">
           {status && <span className="muted small">{status}</span>}
-          <button className="primary" onClick={save} disabled={!dirty}>
+          <button className="primary" onClick={() => save()} disabled={!dirty}>
             Save profile
           </button>
         </div>
       </div>
       {error && <p className="error">{error}</p>}
+
+      <ResumeImport reference={profile.reference_resume} onImported={importResume} onRemoveReference={removeReference} />
 
       <section className="card">
         <h2>Basics</h2>
@@ -221,7 +241,7 @@ export default function ProfilePage({ userId }: { userId: string }) {
 
       <div className="save-bar end">
         {status && <span className="muted small">{status}</span>}
-        <button className="primary" onClick={save} disabled={!dirty}>
+        <button className="primary" onClick={() => save()} disabled={!dirty}>
           Save profile
         </button>
       </div>

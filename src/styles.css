@@ -144,3 +144,10 @@ aside ul { padding-left: 1.1rem; margin: 0.3rem 0; }
   .resume-layout { display: block; }
   .resume { border: none; box-shadow: none; padding: 0; }
 }
+
+.import { border: 2px solid var(--accent); }
+.import .row { margin-bottom: 0.6rem; }
+.import .paste { margin-top: 0.4rem; }
+.import .reference { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: var(--accent-soft); border-radius: 8px; padding: 0.5rem 0.8rem; margin-bottom: 0.8rem; }
+.import .error { margin-top: 0.8rem; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
