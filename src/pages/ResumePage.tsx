@@ -162,10 +162,11 @@ function versionOf(row: ResumeRow, reason: string): ResumeVersion {
 
 function PageMeter({ pages, federal }: { pages: number | null; federal: boolean }) {
   if (pages === null) return null
+  const shown = Math.ceil(pages * 10 - 0.05) / 10 // round up, so 2.03 pages never reads as "2.0"
   const over = federal && pages > 2
   return (
     <p className={`small page-meter${over ? ' over' : ''}`}>
-      <strong>{federal ? 'Federal format' : 'Length'}:</strong> about {pages.toFixed(1)} printed {pages > 1.05 ? 'pages' : 'page'}
+      <strong>{federal ? 'Federal format' : 'Length'}:</strong> about {shown.toFixed(1)} printed {shown > 1 ? 'pages' : 'page'}
       {federal && (over ? '. Over the two-page limit: USAJOBS will reject it.' : '. Within the two-page limit.')}
     </p>
   )

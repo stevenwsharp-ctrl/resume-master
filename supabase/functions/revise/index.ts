@@ -23,6 +23,7 @@ Rules:
 - The candidate's request may include new facts or pasted text (a new job, a number, a certification). Those are the candidate's own words, so you may use them. Still never make up anything beyond what the candidate, their profile, or their previous resume says.
 - If the request asks for something that would need invented facts, do what you honestly can and say what you couldn't do in change_summary.
 ${WRITING_RULES}
+- Keep it ATS-friendly: plain text, no first person, bullets that open with an action verb, keywords only where the candidate's real experience backs them, and acronyms spelled out on first use.
 - In change_summary, tell the candidate in one to three plain sentences what you changed.`;
 
 Deno.serve(async (req) => {
