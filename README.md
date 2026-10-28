@@ -7,7 +7,7 @@ Keep your resume ready to go. Tell the site about yourself once, get a polished 
 - **Website**: React + Vite, hosted free on GitHub Pages and deployed automatically on every push to `main` (`.github/workflows/deploy.yml`).
 - **Accounts and storage**: Supabase (free tier). Email/password sign-in, plus two tables, `profiles` and `resumes`, protected by row-level security so each person only ever sees their own data (`supabase/migrations`).
 - **AI**: a Supabase Edge Function (`supabase/functions/tailor`) reads the user's profile, fetches the job posting from the link (or uses pasted text), asks Claude to write the resume, and saves the result. The Claude API key lives only in Supabase, never in the website.
-- **Old resume import**: on the profile page, users can upload an existing resume (PDF, .docx or text). The browser pulls the text out, `supabase/functions/import-resume` has Claude sort it into profile fields to prefill anything empty, and the text is kept with the profile so `tailor` can draw on it as extra source material.
+- **Old resume import**: on the profile page, users can upload an existing resume (PDF, .docx, text, or screenshots, which can also be pasted straight in). The browser pulls the text out, `supabase/functions/import-resume` has Claude sort it into profile fields to prefill anything empty, and the text is kept with the profile so `tailor` can draw on it as extra source material.
 
 ## One-time setup
 

@@ -1,12 +1,14 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { ACCEPTED_TYPES, extractResumeText } from '../lib/resumeFile'
-import type { ImportedProfile } from '../lib/resumeFile'
+import { ACCEPTED_TYPES, MAX_IMAGES, extractResumeText, isImage, prepareImage } from '../lib/resumeFile'
+import type { ImportedProfile, ResumeImage } from '../lib/resumeFile'
 import type { ReferenceResume } from '../types'
 
-async function readResume(text: string): Promise<ImportedProfile> {
-  const { data, error } = await supabase.functions.invoke('import-resume', { body: { text } })
+// Sends resume text, or screenshots for the AI to read, and gets back the
+// profile fields plus the resume's text (transcribed, for screenshots).
+async function readResume(body: { text: string } | { images: ResumeImage[] }) {
+  const { data, error } = await supabase.functions.invoke('import-resume', { body })
   if (error) {
     let message = error.message
     if (error instanceof FunctionsHttpError) {
@@ -18,7 +20,7 @@ async function readResume(text: string): Promise<ImportedProfile> {
     }
     throw new Error(message)
   }
-  return data.profile as ImportedProfile
+  return data as { profile: ImportedProfile; text: string }
 }
 
 export default function ResumeImport(props: {
@@ -32,14 +34,14 @@ export default function ResumeImport(props: {
   const [showPaste, setShowPaste] = useState(false)
   const [pasted, setPasted] = useState('')
 
-  async function importText(getText: () => Promise<string>, filename: string) {
+  async function runImport(getBody: () => Promise<{ text: string } | { images: ResumeImage[] }>, filename: string) {
     setError(null)
     try {
       setBusy('Reading your resume…')
-      const text = await getText()
+      const body = await getBody()
       setBusy('Filling in your profile… (about 30 seconds)')
-      const imported = await readResume(text)
-      props.onImported(imported, { filename, text, uploaded_at: new Date().toISOString() })
+      const { profile, text } = await readResume(body)
+      props.onImported(profile, { filename, text, uploaded_at: new Date().toISOString() })
       setPasted('')
       setShowPaste(false)
     } catch (e) {
@@ -50,26 +52,54 @@ export default function ResumeImport(props: {
     }
   }
 
-  function onFile(file: File | undefined) {
-    if (file) importText(() => extractResumeText(file), file.name)
+  function onFiles(files: File[]) {
+    if (files.length === 0 || busy) return
+    const images = files.filter(isImage)
+    if (images.length === files.length) {
+      if (images.length > MAX_IMAGES) {
+        setError(`Up to ${MAX_IMAGES} screenshots at a time, please.`)
+        return
+      }
+      const name = images.length === 1 ? images[0].name || 'Screenshot' : `${images.length} screenshots`
+      runImport(async () => ({ images: await Promise.all(images.map(prepareImage)) }), name)
+    } else if (files.length === 1) {
+      runImport(async () => ({ text: await extractResumeText(files[0]) }), files[0].name)
+    } else {
+      setError('Choose one resume file, or one or more screenshots.')
+    }
   }
 
-  function onPaste() {
+  // Pasting a screenshot (Ctrl/Cmd+V) anywhere on the profile page imports it.
+  const onFilesRef = useRef(onFiles)
+  onFilesRef.current = onFiles
+  useEffect(() => {
+    function onPasteEvent(e: ClipboardEvent) {
+      const images = Array.from(e.clipboardData?.files ?? []).filter(isImage)
+      if (images.length === 0) return
+      e.preventDefault()
+      onFilesRef.current(images)
+    }
+    window.addEventListener('paste', onPasteEvent)
+    return () => window.removeEventListener('paste', onPasteEvent)
+  }, [])
+
+  function onPasteText() {
     const text = pasted.trim()
     if (text.length < 100) {
       setError('That looks too short to be a resume.')
       return
     }
-    importText(async () => text.slice(0, 50000), 'Pasted resume')
+    runImport(async () => ({ text: text.slice(0, 50000) }), 'Pasted resume')
   }
 
   return (
     <section className="card import">
       <h2>Start from your old resume</h2>
       <p className="muted">
-        Upload a resume you already have (PDF, Word .docx or text). We'll fill in any empty parts of your profile from
-        it, and keep it on file so the AI can draw on its skills and accomplishments every time it writes or tailors a
-        resume. Nothing you've already typed gets overwritten.
+        Upload a resume you already have (PDF, Word .docx, text, or screenshots of it), or just paste a screenshot
+        here with Ctrl+V / Cmd+V. We'll fill in any empty parts of your profile from it, and keep it on file so the AI
+        can draw on its skills and accomplishments every time it writes or tailors a resume. Nothing you've already
+        typed gets overwritten.
       </p>
 
       {props.reference && (
@@ -89,13 +119,13 @@ export default function ResumeImport(props: {
           ref={fileInput}
           type="file"
           accept={ACCEPTED_TYPES}
+          multiple
           className="sr-only"
-          id="resume-file"
-          onChange={(e) => onFile(e.target.files?.[0])}
+          onChange={(e) => onFiles(Array.from(e.target.files ?? []))}
           disabled={busy !== null}
         />
         <button className="primary" onClick={() => fileInput.current?.click()} disabled={busy !== null}>
-          {props.reference ? 'Upload a different resume' : 'Upload resume'}
+          {props.reference ? 'Upload a different resume' : 'Upload resume or screenshot'}
         </button>
         {busy && <span className="muted small">{busy}</span>}
       </div>
@@ -106,7 +136,7 @@ export default function ResumeImport(props: {
             Paste your resume text
             <textarea rows={8} value={pasted} onChange={(e) => setPasted(e.target.value)} />
           </label>
-          <button onClick={onPaste} disabled={busy !== null || !pasted.trim()}>
+          <button onClick={onPasteText} disabled={busy !== null || !pasted.trim()}>
             Use this text
           </button>
         </>

@@ -3,7 +3,35 @@
 // loaded only when someone actually uploads a file.
 import type { Profile, ReferenceResume } from '../types'
 
-export const ACCEPTED_TYPES = '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain'
+export const ACCEPTED_TYPES = '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg,image/webp,image/gif'
+
+export interface ResumeImage {
+  media_type: 'image/jpeg'
+  data: string
+}
+
+export const MAX_IMAGES = 5
+
+export const isImage = (file: File) => file.type.startsWith('image/')
+
+// Screenshots go to the AI as images. Shrinking them first keeps uploads
+// small; 2000px on the long side is still plenty to read resume text.
+export async function prepareImage(file: File): Promise<ResumeImage> {
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error(`Couldn't open ${file.name || 'that image'}. Try a PNG or JPEG.`)
+  })
+  const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale)
+  canvas.height = Math.round(bitmap.height * scale)
+  const ctx = canvas.getContext('2d')!
+  ctx.fillStyle = '#fff'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+  return { media_type: 'image/jpeg', data: dataUrl.slice(dataUrl.indexOf(',') + 1) }
+}
 
 const MAX_BYTES = 10 * 1024 * 1024
 
