@@ -231,6 +231,7 @@ export default function ProfilePage({ userId }: { userId: string }) {
         <div className="row">
           <input
             type="password"
+            autoComplete="new-password"
             placeholder="New password (8+ characters)"
             minLength={8}
             value={newPassword}

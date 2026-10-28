@@ -57,12 +57,22 @@ export default function AuthPage() {
         <h2>{mode === 'signin' ? 'Sign in' : 'Create your account'}</h2>
         <label>
           Email
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input
+            type="email"
+            name="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </label>
         <label>
           Password
           <input
             type="password"
+            name="password"
+            // Lets browsers and password managers offer a strong generated password on sign-up.
+            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
             required
             minLength={8}
             value={password}
