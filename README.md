@@ -2,6 +2,12 @@
 
 Keep your resume ready to go. Tell the site about yourself once, get a polished resume, then paste any job link to get a version tailored to that role. Every resume stays saved in your account.
 
+## Links
+
+- **GitHub repository**: [github.com/stevenwsharp-ctrl/resume-master](https://github.com/stevenwsharp-ctrl/resume-master)
+- **Live site**: [stevenwsharp-ctrl.github.io/resume-master](https://stevenwsharp-ctrl.github.io/resume-master/)
+- **Clone**: `git clone https://github.com/stevenwsharp-ctrl/resume-master.git`
+
 ## How it works
 
 - **Website**: React + Vite, hosted free on GitHub Pages and deployed automatically on every push to `main` (`.github/workflows/deploy.yml`).
