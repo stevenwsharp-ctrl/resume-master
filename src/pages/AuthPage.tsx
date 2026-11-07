@@ -1,31 +1,53 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { supabase } from '../lib/supabase'
+import { siteUrl, supabase } from '../lib/supabase'
 
-export default function AuthPage() {
+// Supabase error text is short. Add what the user can do next.
+function explain(message: string) {
+  if (/invalid login credentials/i.test(message))
+    return 'The email or password is not correct. If you do not have an account yet, select "Create an account". If you forgot the password, select "Forgot password".'
+  if (/email not confirmed/i.test(message))
+    return 'Your email is not confirmed yet. Open the link in the email we sent you, or send the email again below.'
+  if (/rate limit/i.test(message)) return 'Too many emails were sent. Wait a few minutes, then try again.'
+  if (/already registered/i.test(message)) return 'An account with this email already exists. Sign in, or select "Forgot password".'
+  return message
+}
+
+export default function AuthPage({ notice }: { notice?: string | null }) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(notice ?? null)
+  const [needsConfirm, setNeedsConfirm] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError(null)
     setMessage(null)
+    setNeedsConfirm(false)
     if (mode === 'signin') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setError(error.message)
+      if (error) {
+        setError(explain(error.message))
+        setNeedsConfirm(/email not confirmed/i.test(error.message))
+      }
     } else {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin + window.location.pathname },
+        options: { emailRedirectTo: siteUrl },
       })
-      if (error) setError(error.message)
-      else if (!data.session) setMessage('Check your email to confirm your account, then sign in.')
+      if (error) setError(explain(error.message))
+      else if (data.user && data.user.identities?.length === 0)
+        setError(explain('already registered'))
+      else if (!data.session) {
+        setMessage('Check your email (and the spam folder) for the confirmation link. Then sign in here.')
+        setNeedsConfirm(true)
+        setMode('signin')
+      }
     }
     setBusy(false)
   }
@@ -35,11 +57,26 @@ export default function AuthPage() {
       setError('Enter your email first.')
       return
     }
+    setError(null)
+    setMessage(null)
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname,
+      // "reset=1" tells the site to show the new-password form when the link comes back.
+      redirectTo: siteUrl + '?reset=1',
     })
-    if (error) setError(error.message)
-    else setMessage('Password reset email sent.')
+    if (error) setError(explain(error.message))
+    else setMessage('Password reset email sent. Open the link in this browser.')
+  }
+
+  async function resendConfirmation() {
+    if (!email) {
+      setError('Enter your email first.')
+      return
+    }
+    setError(null)
+    setMessage(null)
+    const { error } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: siteUrl } })
+    if (error) setError(explain(error.message))
+    else setMessage('Confirmation email sent again. Check the spam folder too.')
   }
 
   return (
@@ -81,6 +118,13 @@ export default function AuthPage() {
         </label>
         {error && <p className="error">{error}</p>}
         {message && <p className="success">{message}</p>}
+        {needsConfirm && (
+          <p className="small">
+            <button type="button" className="link" onClick={resendConfirmation}>
+              Send the confirmation email again
+            </button>
+          </p>
+        )}
         <button className="primary" disabled={busy}>
           {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
         </button>

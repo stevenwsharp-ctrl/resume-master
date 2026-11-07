@@ -3,7 +3,7 @@ name: Deploy database and AI function to Supabase
 on:
   push:
     branches: [main]
-    paths: ['supabase/**']
+    paths: ['supabase/**', '.github/workflows/supabase.yml']
   workflow_dispatch:
 
 jobs:
@@ -24,3 +24,15 @@ jobs:
       - run: supabase functions deploy tailor
       - run: supabase functions deploy import-resume
       - run: supabase functions deploy revise
+      # Email links (confirm account, reset password) go to the Site URL. If it is not set,
+      # they go to localhost and sign-up never finishes. Set it to the GitHub Pages address.
+      - name: Point Supabase sign-in emails at the live site
+        run: |
+          SITE="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          curl -fsS -X PATCH "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" \
+            -d "{\"site_url\": \"$SITE\", \"uri_allow_list\": \"$SITE,$SITE**,http://localhost:5173/**\"}" > /dev/null
+          echo "Auth settings now:"
+          curl -fsS "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            | jq '{site_url, uri_allow_list, external_email_enabled, mailer_autoconfirm, disable_signup, smtp_host, rate_limit_email_sent}'
